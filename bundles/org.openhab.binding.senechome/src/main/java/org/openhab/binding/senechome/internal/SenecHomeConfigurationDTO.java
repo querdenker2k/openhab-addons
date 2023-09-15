@@ -23,4 +23,8 @@ public class SenecHomeConfigurationDTO {
     public int limitationTresholdValue = 95;
     public int limitationDuration = 120;
     public boolean useHttp = false;
+    public int meinSenecRefreshInterval = 300;
+    public String meinSenecUsername = "";
+    public String meinSenecPassword = "";
+    public String meinSenecDeviceId = "";
 }
