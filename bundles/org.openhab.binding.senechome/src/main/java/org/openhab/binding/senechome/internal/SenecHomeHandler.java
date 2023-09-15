@@ -32,6 +32,7 @@ import javax.measure.Unit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
+import org.openhab.binding.senechome.internal.json.MeinSenecResponse;
 import org.openhab.binding.senechome.internal.json.SenecHomeResponse;
 import org.openhab.core.cache.ExpiringCache;
 import org.openhab.core.library.types.DecimalType;
@@ -83,12 +84,14 @@ public class SenecHomeHandler extends BaseThingHandler {
     private @Nullable ScheduledFuture<?> refreshJob;
     private @Nullable PowerLimitationStatusDTO limitationStatus = null;
     private final @Nullable SenecHomeApi senecHomeApi;
+    private final @Nullable MeinSenecApi meinSenecApi;
     private SenecHomeConfigurationDTO config = new SenecHomeConfigurationDTO();
     private final ExpiringCache<Boolean> refreshCache = new ExpiringCache<>(Duration.ofSeconds(5), this::refreshState);
 
     public SenecHomeHandler(Thing thing, HttpClient httpClient) {
         super(thing);
         this.senecHomeApi = new SenecHomeApi(httpClient);
+        this.meinSenecApi = new MeinSenecApi(httpClient);
     }
 
     @Override
@@ -125,6 +128,7 @@ public class SenecHomeHandler extends BaseThingHandler {
     public void initialize() {
         config = getConfigAs(SenecHomeConfigurationDTO.class);
         senecHomeApi.setHostname("%s://%s".formatted(config.useHttp ? "http" : "https", config.hostname));
+        meinSenecApi.loginMeinSenec(config.meinSenecUsername, config.meinSenecPassword, config.meinSenecDeviceId);
         refreshJob = scheduler.scheduleWithFixedDelay(this::refresh, 0, config.refreshInterval, TimeUnit.SECONDS);
         limitationStatus = null;
     }
@@ -135,8 +139,10 @@ public class SenecHomeHandler extends BaseThingHandler {
 
     public @Nullable Boolean refreshState() {
         SenecHomeResponse response = null;
+        MeinSenecResponse responseMeinSenec = null;
         try {
             response = senecHomeApi.getStatistics();
+            responseMeinSenec = meinSenecApi.getDashboard();
             logger.trace("received {}", response);
 
             BigDecimal pvLimitation = new BigDecimal(100).subtract(getSenecValue(response.power.powerLimitation))
@@ -197,18 +203,22 @@ public class SenecHomeHandler extends BaseThingHandler {
             updateQtyState(CHANNEL_SENEC_GRID_VOLTAGE_PH3, response.grid.currentGridVoltagePerPhase[2], 2, Units.VOLT);
             updateQtyState(CHANNEL_SENEC_GRID_FREQUENCY, response.grid.currentGridFrequency, 2, Units.HERTZ);
 
-            updateQtyState(CHANNEL_SENEC_LIVE_BAT_CHARGE, response.statistics.liveBatCharge, 2, Units.KILOWATT_HOUR);
-            updateQtyState(CHANNEL_SENEC_LIVE_BAT_DISCHARGE, response.statistics.liveBatDischarge, 2,
-                    Units.KILOWATT_HOUR);
-            updateQtyState(CHANNEL_SENEC_LIVE_GRID_IMPORT, response.statistics.liveGridImport, 2, Units.KILOWATT_HOUR);
-            updateQtyState(CHANNEL_SENEC_LIVE_GRID_EXPORT, response.statistics.liveGridExport, 2, Units.KILOWATT_HOUR);
-            updateQtyState(CHANNEL_SENEC_LIVE_HOUSE_CONSUMPTION, response.statistics.liveHouseConsumption, 2,
-                    Units.KILOWATT_HOUR);
-            updateQtyState(CHANNEL_SENEC_LIVE_POWER_GENERATOR, response.statistics.livePowerGenerator, 2,
-                    Units.KILOWATT_HOUR);
-            if (response.statistics.liveWallboxEnergy != null) {
-                updateQtyState(CHANNEL_SENEC_LIVE_ENERGY_WALLBOX1, response.statistics.liveWallboxEnergy[0], 2,
-                        Units.KILOWATT_HOUR, DIVISOR_ISO_TO_KILO);
+            if (meinSenecApi.isEnabled()) {
+                updateMeinSenecState(CHANNEL_SENEC_LIVE_BAT_CHARGE,
+                        responseMeinSenec.getAktuell().getSpeicherbeladung().getWert(), Units.KILOWATT_HOUR);
+                updateMeinSenecState(CHANNEL_SENEC_LIVE_BAT_DISCHARGE,
+                        responseMeinSenec.getAktuell().getStromverbrauch().getWert(), Units.KILOWATT_HOUR);
+                updateMeinSenecState(CHANNEL_SENEC_LIVE_GRID_IMPORT,
+                        responseMeinSenec.getAktuell().getNetzbezug().getWert(), Units.KILOWATT_HOUR);
+                updateMeinSenecState(CHANNEL_SENEC_LIVE_GRID_EXPORT,
+                        responseMeinSenec.getAktuell().getNetzeinspeisung().getWert(), Units.KILOWATT_HOUR);
+                updateMeinSenecState(CHANNEL_SENEC_LIVE_HOUSE_CONSUMPTION,
+                        responseMeinSenec.getAktuell().getStromverbrauch().getWert(), Units.KILOWATT_HOUR);
+                updateMeinSenecState(CHANNEL_SENEC_LIVE_POWER_GENERATOR,
+                        responseMeinSenec.getAktuell().getStromerzeugung().getWert(), Units.KILOWATT_HOUR);
+                updateMeinSenecState(CHANNEL_SENEC_LIVE_ENERGY_WALLBOX1,
+                        responseMeinSenec.getAktuell().getWallbox().getWert(), Units.KILOWATT_HOUR,
+                        DIVISOR_ISO_TO_KILO);
             }
 
             if (response.battery.chargedEnergy != null) {
@@ -339,6 +349,20 @@ public class SenecHomeHandler extends BaseThingHandler {
             value = value.divide(divisor, scale, RoundingMode.HALF_UP);
         } else {
             value = value.setScale(scale, RoundingMode.HALF_UP);
+        }
+        updateState(channel.getUID(), new QuantityType<Q>(value, unit));
+    }
+
+    protected <Q extends Quantity<Q>> void updateMeinSenecState(String channelName, double doubleValue, Unit<Q> unit) {
+        updateMeinSenecState(channelName, doubleValue, unit, null);
+    }
+
+    protected <Q extends Quantity<Q>> void updateMeinSenecState(String channelName, double doubleValue, Unit<Q> unit,
+            @Nullable BigDecimal divisor) {
+        Channel channel = getThing().getChannel(channelName);
+        BigDecimal value = new BigDecimal(doubleValue);
+        if (divisor != null) {
+            value = value.divide(divisor, 1, RoundingMode.HALF_UP);
         }
         updateState(channel.getUID(), new QuantityType<Q>(value, unit));
     }

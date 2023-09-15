@@ -25,7 +25,19 @@ Examples: Lights, pool filters, wash machines, ...
 demo.things
 
 ```java
-Thing senechome:senechome:pvbattery [ hostname="192.168.0.128", refreshInterval=60, limitationTresholdValue=70, limitationDuration=60, useHttp=false ]
+Thing senechome:senechome:pvbattery [ 
+    hostname="192.168.0.128",
+    refreshInterval=60,
+    limitationTresholdValue=70,
+    limitationDuration=60,
+    useHttp=false,
+    // optional: mein-senec.de connection for statistic values
+    meinSenecRefreshInterval=300,
+    meinSenecUsername=address@mailprovider.com,
+    meinSenecPassword=SecretPassword,
+    // only required if you have more than one device registered in mein-senec.de
+    meinSenecDeviceId=1234
+]
 ```
 
 If the thing goes online then the connection to the web interface is successful.
@@ -70,13 +82,6 @@ The property `limitationTresholdValue` is used as threshold for channel `powerLi
 | gridVoltagePhase2             | volt           | Grid voltage on Phase 2                                                  |
 | gridVoltagePhase3             | volt           | Grid voltage on Phase 3                                                  |
 | gridFrequency                 | hertz          | Grid frequency                                                           |
-| liveBatCharge                 | kilo watt hour | Live Total Bat Charge                                                    |
-| liveBatDischarge              | kilo watt hour | Live Total Bat Discharge                                                 |
-| liveGridImport                | kilo watt hour | Live Total Grid Import                                                   |
-| liveGridExport                | kilo watt hour | Live Total Grid Export                                                   |
-| liveHouseConsumption          | kilo watt hour | Live Total House Consumption (without WB)                                |
-| livePowerGenerator            | kilo watt hour | Live Total PV generator generated energy                                 |
-| liveEnergyWallbox1            | kilo watt hour | Live Total Wallbox 1 charged energy                                      |
 | chargedEnergyPack1            | kilo watt hour | total charged energy battery pack 1                                      |
 | chargedEnergyPack2            | kilo watt hour | total charged energy battery pack 2                                      |
 | chargedEnergyPack3            | kilo watt hour | total charged energy battery pack 3                                      |
@@ -114,6 +119,18 @@ The property `limitationTresholdValue` is used as threshold for channel `powerLi
 | wallbox1ChargingCurrentPhase2 | ampere         | Wallbox 1 charging current Phase 2                                       |
 | wallbox1ChargingCurrentPhase3 | ampere         | Wallbox 1 charging current Phase 3                                       |
 | wallbox1ChargingPower         | watt           | Wallbox 1 charging power                                                 |
+
+If you configure the (Mein Senec)[https://mein-senec.de/] login username and password, you will also receive data in these channels:
+
+| Channel                       | Type           | Description                                                              |
+| ----------------------------- | -------------- | ------------------------------------------------------------------------ |
+| liveBatCharge                 | kilo watt hour | Live Total Bat Charge                                                    |
+| liveBatDischarge              | kilo watt hour | Live Total Bat Discharge                                                 |
+| liveGridImport                | kilo watt hour | Live Total Grid Import                                                   |
+| liveGridExport                | kilo watt hour | Live Total Grid Export                                                   |
+| liveHouseConsumption          | kilo watt hour | Live Total House Consumption (without WB)                                |
+| livePowerGenerator            | kilo watt hour | Live Total PV generator generated energy                                 |
+| liveEnergyWallbox1            | kilo watt hour | Live Total Wallbox 1 charged energy                                      |
 
 ## Items
 

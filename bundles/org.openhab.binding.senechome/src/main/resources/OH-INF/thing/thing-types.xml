@@ -123,10 +123,31 @@
 				<default>120</default>
 			</parameter>
 			<parameter name="useHttp" type="boolean" required="false">
-				<label>Http access</label>
+				<label>Http Access</label>
 				<description>Use legacy http access</description>
 				<default>false</default>
 			</parameter>
+			<parameter name="meinSenecRefreshInterval" type="integer" min="60" unit="s">
+				<label>Mein Senec Refresh Interval</label>
+				<description>Rate of refreshing details (in s)</description>
+				<default>300</default>
+			</parameter>
+			<parameter name="meinSenecUsername" type="text" required="false">
+				<label>Mein Senec Username</label>
+				<description>Enter the username that you use to login to mein-senec.de</description>
+				<context>email</context>
+			</parameter>
+			<parameter name="meinSenecPassword" type="text" required="false">
+				<label>Mein Senec Password</label>
+				<description>Enter the password that you use to login to mein-senec.de</description>
+				<context>password</context>
+			</parameter>
+			<parameter name="meinSenecDeviceId" type="text" required="false">
+				<label>Mein Senec Device ID</label>
+				<description>Enter the device id if you have more than one device connected at mein-senec.de. Leave it empty to take
+					the first and only device.</description>
+			</parameter>
+
 		</config-description>
 
 	</thing-type>
